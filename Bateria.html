@@ -573,25 +573,8 @@
 // ============================================================
 let miBateria = null;
 
-(function cargarSmplr() {
-  const script = document.createElement('script');
-  script.src = 'https://unpkg.com/smplr@1.0.0/dist/index.mjs';
-  script.onload = () => {
-    if (window.smplr && window.smplr.DrumMachine) {
-      miBateria = window.smplr.DrumMachine;
-      console.log('✅ smplr cargado correctamente (UMD)');
-    } else if (window.DrumMachine) {
-      miBateria = window.DrumMachine;
-      console.log('✅ smplr cargado correctamente (global)');
-    } else {
-      console.warn('⚠️ smplr cargado pero no se encontró DrumMachine');
-    }
-  };
-  script.onerror = () => {
-    console.warn('⚠️ No se pudo cargar smplr, usando síntesis');
-  };
-  document.head.appendChild(script);
-})();
+// smplr desactivado - usamos síntesis
+console.log('🎵 Usando sonidos sintéticos de Web Audio API');
 
 // ============================================================
 // IMAGEN
