@@ -9,13 +9,13 @@
   "theme_color": "#ffb347",
   "icons": [
     {
-      "src": "/Bateria/icon-192.png",
+      "src": "/Bateria/icono-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/Bateria/icon-512.png",
+      "src": "/Bateria/icono-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
