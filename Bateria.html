@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Mi Batería">
 <link rel="apple-touch-icon" href="/Bateria/icono-192.png">
+ <link rel="icon" type="image/x-icon" href="/Bateria/favicon.ico">
+<link rel="shortcut icon" type="image/x-icon" href="/Bateria/favicon.ico">
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
   html, body { height: 100%; margin: 0; overflow: hidden; }
@@ -573,7 +575,7 @@ let miBateria = null;
 
 (function cargarSmplr() {
   const script = document.createElement('script');
-  script.src = 'https://unpkg.com/smplr@0.14.0/dist/index.js';
+  script.src = 'https://code4fukui.github.io/smplr/smplr.js';
   script.onload = () => {
     if (window.smplr && window.smplr.DrumMachine) {
       miBateria = window.smplr.DrumMachine;
