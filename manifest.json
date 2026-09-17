@@ -1,7 +1,8 @@
 {
   "name": "Mi Batería",
   "short_name": "Batería",
-  "start_url": "./Bateria.html",
+  "start_url": "/Bateria/Bateria.html",
+  "scope": "/Bateria/",
   "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#14100e",
