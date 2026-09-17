@@ -763,14 +763,23 @@
 let DrumMachine = null;
 
 (function cargarSmplr() {
-  import('https://cdn.jsdelivr.net/npm/smplr@latest/dist/index.js')
-    .then(mod => {
-      DrumMachine = mod.DrumMachine;
-      console.log('✅ smplr cargado correctamente');
-    })
-    .catch(e => {
-      console.warn('⚠️ No se pudo cargar smplr, usando síntesis', e);
-    });
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/smplr@0.14.0/dist/index.min.js';
+  script.onload = () => {
+    if (window.smplr && window.smplr.DrumMachine) {
+      DrumMachine = window.smplr.DrumMachine;
+      console.log('✅ smplr cargado correctamente (UMD)');
+    } else if (window.DrumMachine) {
+      DrumMachine = window.DrumMachine;
+      console.log('✅ smplr cargado correctamente (global)');
+    } else {
+      console.warn('⚠️ smplr cargado pero no se encontró DrumMachine');
+    }
+  };
+  script.onerror = () => {
+    console.warn('⚠️ No se pudo cargar smplr, usando síntesis');
+  };
+  document.head.appendChild(script);
 })();
 
 // ============================================================
