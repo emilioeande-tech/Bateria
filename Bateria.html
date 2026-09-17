@@ -573,7 +573,7 @@ let miBateria = null;
 
 (function cargarSmplr() {
   const script = document.createElement('script');
-  script.src = 'https://cdn.jsdelivr.net/npm/smplr@0.14.0/dist/index.min.js';
+  script.src = 'https://unpkg.com/smplr@0.14.0/dist/index.js';
   script.onload = () => {
     if (window.smplr && window.smplr.DrumMachine) {
       miBateria = window.smplr.DrumMachine;
