@@ -1,0 +1,2528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🥁 Mi Batería - Calibrable</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body {
+    background: #14100e;
+    font-family: 'Segoe UI', 'Arial Rounded MT Bold', sans-serif;
+    color: #ddd;
+  }
+
+  .app-layout {
+    display: flex;
+    flex-direction: row;
+    width: 100vw;
+    height: 100vh;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  /* ====== MENÚ LATERAL ====== */
+  .menu-lateral {
+    flex: 0 0 250px;
+    max-width: 250px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow: hidden;
+    padding-right: 4px;
+    padding-left: 2px;
+  }
+
+  .menu-cabecera-fija {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid rgba(255,179,71,0.25);
+    margin-bottom: 6px;
+  }
+
+  .menu-cuerpo-scroll {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+    min-height: 0;
+  }
+  .menu-cuerpo-scroll::-webkit-scrollbar { width: 6px; }
+  .menu-cuerpo-scroll::-webkit-scrollbar-track { background: #1a1612; border-radius: 3px; }
+  .menu-cuerpo-scroll::-webkit-scrollbar-thumb { background: #ffb347; border-radius: 3px; }
+  .menu-cuerpo-scroll::-webkit-scrollbar-thumb:hover { background: #ff8c1a; }
+
+  .menu-titulo {
+    color: #ffb347;
+    text-align: center;
+    font-size: 0.85rem;
+    margin: 0 0 4px 0;
+    text-shadow: 0 0 12px rgba(255,179,71,0.6);
+    letter-spacing: 1.5px;
+    font-weight: 300;
+  }
+
+  .indicador-pulso {
+    display: flex; gap: 5px; justify-content: center;
+    margin-bottom: 3px;
+  }
+  .luz-pulso {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #2a2520;
+    border: 1px solid #3a3530;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.6rem; font-weight: bold; color: #666;
+    transition: all 0.1s ease;
+  }
+  .luz-pulso.activo {
+    background: #ffb347; color: #14100e;
+    border-color: #ffb347;
+    box-shadow: 0 0 12px rgba(255,179,71,0.95);
+    transform: scale(1.15);
+  }
+
+  .fila-controles {
+    display: flex; gap: 4px; flex-wrap: wrap;
+    justify-content: center; align-items: center;
+  }
+
+  .btn {
+    padding: 6px 10px; border: none; border-radius: 16px;
+    font-size: 0.6rem; font-weight: bold;
+    cursor: pointer; transition: all 0.15s ease;
+    font-family: inherit;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    touch-action: manipulation;
+  }
+  .btn:active { transform: scale(0.95); }
+  .btn-play {
+    background: linear-gradient(135deg, #ffb347, #ff8c1a);
+    color: #14100e; font-size: 0.75rem;
+    padding: 8px 14px; letter-spacing: 1px; flex: 1;
+  }
+  .btn-play.parar { background: linear-gradient(135deg, #ff5757, #c0392b); color: white; }
+  .btn-etiquetas, .btn-calibrar, .btn-metronomo {
+    background: #2a2520; color: #bbb;
+    border: 1px solid #3a3530;
+    padding: 6px 8px; font-size: 0.55rem; flex: 1;
+  }
+  .btn-calibrar.activo { background: #e74c3c; color: white; border-color: #e74c3c; }
+  .btn-etiquetas.activo { background: #2ecc71; color: #14100e; border-color: #2ecc71; }
+  .btn-metronomo.activo { background: #e67e22; color: white; border-color: #e67e22; }
+
+  /* Botón de clic ON/OFF del metrónomo */
+  .btn-clic {
+    background: #2a2520; color: #bbb;
+    border: 1px solid #3a3530;
+    padding: 4px 8px; font-size: 0.55rem;
+    border-radius: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: bold;
+    flex: 1;
+  }
+  .btn-clic.activo { background: #2ecc71; color: #14100e; border-color: #2ecc71; }
+  .btn-clic.silencioso { background: #c0392b; color: white; border-color: #c0392b; }
+
+  .etiqueta-nivel {
+    color: #ffb347;
+    font-size: 0.55rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    padding: 6px 4px 2px 4px;
+    border-top: 1px solid rgba(255,179,71,0.15);
+    margin-top: 4px;
+  }
+  .etiqueta-nivel:first-of-type { border-top: none; margin-top: 0; }
+  .etiqueta-nivel.n2 { color: #5dade2; border-color: rgba(93,173,226,0.15); }
+  .etiqueta-nivel.n3 { color: #e67e22; border-color: rgba(230,126,34,0.15); }
+  .etiqueta-nivel.n4 { color: #9b59b6; border-color: rgba(155,89,182,0.15); }
+  .etiqueta-nivel.n5 { color: #f1c40f; border-color: rgba(241,196,15,0.15); }
+  .etiqueta-nivel.n6 { color: #e74c3c; border-color: rgba(231,76,60,0.2); }
+  .etiqueta-nivel.nr { color: #2ecc71; border-color: rgba(46,204,113,0.2); }
+  .etiqueta-nivel.nm { color: #ff5757; border-color: rgba(255,87,87,0.25); }
+  .etiqueta-nivel.np { color: #26c6da; border-color: rgba(38,198,218,0.25); }
+  .etiqueta-nivel.np2 { color: #ff9800; border-color: rgba(255,152,0,0.3); }
+
+  .grid-patrones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+  }
+
+  .btn-patron {
+    background: #2a2520; color: #bbb;
+    border: 1px solid #3a3530;
+    padding: 4px 4px; font-size: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+  }
+  .btn-patron.seleccionado { background: #ffb347; color: #14100e; border-color: #ffb347; }
+
+  .fila-opciones {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+  }
+  .btn-velocidad, .btn-anticipacion, .btn-compas {
+    background: #2a2520; color: #bbb;
+    border: 1px solid #3a3530;
+    padding: 4px 4px; font-size: 0.5rem;
+  }
+  .btn-velocidad.seleccionado { background: #5dade2; color: #14100e; border-color: #5dade2; }
+  .btn-anticipacion.seleccionado { background: #bb8fce; color: #14100e; border-color: #bb8fce; }
+  .btn-compas.seleccionado { background: #e67e22; color: #14100e; border-color: #e67e22; }
+
+  .subtitulo-menu {
+    color: #888;
+    font-size: 0.5rem;
+    text-align: center;
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  .barra-calibracion {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    background: #1e1a16;
+    border: 1px solid #3a3530;
+    border-radius: 6px;
+    padding: 6px;
+    margin-top: 4px;
+  }
+  .barra-calibracion.visible { display: flex; }
+  .barra-calibracion .titulo-cal {
+    color: #ffb347;
+    font-size: 0.55rem;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+  .barra-calibracion .botones-add {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+  }
+  .barra-calibracion button {
+    padding: 4px 4px;
+    font-size: 0.5rem;
+    background: #2a2520;
+    color: #bbb;
+    border: 1px solid #3a3530;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: bold;
+  }
+  .barra-calibracion button:hover { background: #3a3530; }
+  .barra-calibracion button.primary { background: #ffb347; color: #14100e; border-color: #ffb347; }
+  .barra-calibracion button.peligro { background: #c0392b; color: white; border-color: #c0392b; }
+
+  .instruccion {
+    color: #ffb347;
+    font-size: 0.55rem; text-align: center;
+    padding: 5px 8px;
+    background: rgba(255,179,71,0.1);
+    border: 1px solid rgba(255,179,71,0.25);
+    border-radius: 8px;
+    min-height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 300;
+    letter-spacing: 0.3px;
+    margin-top: 3px;
+  }
+
+  /* ====== ESCENARIO ====== */
+  .bateria-escenario {
+    position: relative;
+    flex: 1 1 auto;
+    height: 100%;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: #f5f5f5;
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.1), 0 4px 20px rgba(0,0,0,0.6);
+    touch-action: none;
+    min-width: 0;
+  }
+  #imagenBateria {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .bateria-escenario::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,0.2) 100%);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  #canvasBaquetas, #canvasAnimacion {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  #canvasAnimacion { z-index: 5; }
+  #canvasBaquetas { z-index: 30; }
+
+  .zona {
+    position: absolute;
+    cursor: pointer;
+    border-radius: 50%;
+    z-index: 10;
+    transition: box-shadow 0.15s ease-out;
+  }
+  .zona .etiqueta {
+    position: absolute;
+    bottom: -13px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.42rem;
+    font-weight: bold;
+    color: #ffb347;
+    background: rgba(0,0,0,0.6);
+    padding: 1px 5px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0,0,0,1);
+    pointer-events: none;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .bateria-escenario.mostrar-etiquetas .zona .etiqueta { opacity: 0.95; }
+
+  .zona.golpeando {
+    box-shadow:
+      inset 0 0 0 3px #ffb347,
+      0 0 0 3px #ffb347,
+      0 0 18px 6px #ffb347,
+      0 0 40px 14px rgba(255,140,26,0.8);
+    background: radial-gradient(circle, rgba(255,179,71,0.25) 0%, transparent 70%);
+  }
+  .zona.proximo { animation: contornoPalpita 0.65s infinite alternate; }
+  @keyframes contornoPalpita {
+    from { box-shadow: 0 0 0 2px rgba(255,179,71,0.7), 0 0 12px 3px rgba(255,179,71,0.5); }
+    to { box-shadow: 0 0 0 3px rgba(255,179,71,1), 0 0 22px 7px rgba(255,179,71,0.9), 0 0 40px 14px rgba(255,140,26,0.5); }
+  }
+
+  .bateria-escenario.calibrando .zona {
+    background: rgba(255,179,71,0.15);
+    border: 2px dashed #ffb347;
+    cursor: move;
+  }
+  .bateria-escenario.calibrando .zona.seleccionada {
+    background: rgba(255,179,71,0.3);
+    border: 2px solid #ffb347;
+    box-shadow: 0 0 15px rgba(255,179,71,0.7);
+  }
+  .bateria-escenario.calibrando .zona .etiqueta { opacity: 1; }
+
+  .zona .handle {
+    position: absolute;
+    right: -8px; bottom: -8px;
+    width: 16px; height: 16px;
+    background: #ffb347;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    cursor: se-resize;
+    display: none;
+    z-index: 20;
+    box-shadow: 0 0 8px rgba(255,179,71,0.9);
+  }
+  .bateria-escenario.calibrando .zona.seleccionada .handle { display: block; }
+
+  .zona .btn-borrar {
+    position: absolute;
+    left: -8px; top: -8px;
+    width: 16px; height: 16px;
+    background: #e74c3c;
+    color: white;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 20;
+    line-height: 1;
+  }
+  .bateria-escenario.calibrando .zona.seleccionada .btn-borrar { display: flex; }
+
+  /* Indicador visual de pulso del metrónomo */
+  .metronomo-pulso {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #2a2520;
+    border: 2px solid #3a3530;
+    z-index: 40;
+    transition: all 0.08s ease;
+  }
+  .metronomo-pulso.activo {
+    background: #e67e22;
+    border-color: #e67e22;
+    box-shadow: 0 0 16px rgba(230,126,34,0.95);
+    transform: scale(1.2);
+  }
+  .metronomo-pulso.activo.acento {
+    background: #ff5757;
+    border-color: #ff5757;
+    box-shadow: 0 0 20px rgba(255,87,87,1);
+    transform: scale(1.35);
+  }
+
+  @media (max-width: 700px) {
+    .app-layout { flex-direction: column; padding: 4px; gap: 4px; }
+    .menu-lateral {
+      flex: 0 0 auto;
+      max-width: 100%;
+      max-height: 55vh;
+      order: 2;
+    }
+    .bateria-escenario { flex: 1 1 auto; min-height: 40vh; order: 1; }
+    .menu-cabecera-fija { padding-bottom: 4px; margin-bottom: 4px; }
+  }
+</style>
+</head>
+
+<body>
+<div class="app-layout">
+
+  <aside class="menu-lateral">
+
+    <div class="menu-cabecera-fija">
+
+      <h1 class="menu-titulo">🥁 MI BATERÍA</h1>
+
+      <div class="indicador-pulso" id="indicadorPulso">
+        <div class="luz-pulso" data-pulso="0">1</div>
+        <div class="luz-pulso" data-pulso="1">2</div>
+        <div class="luz-pulso" data-pulso="2">3</div>
+        <div class="luz-pulso" data-pulso="3">4</div>
+      </div>
+
+      <div class="fila-controles">
+        <button class="btn btn-play" id="btnPlay">▶ EMPEZAR</button>
+      </div>
+      <div class="fila-controles">
+        <button class="btn btn-etiquetas" id="btnEtiquetas">🏷 Etiquetas</button>
+        <button class="btn btn-calibrar" id="btnCalibrar">🔧 Calibrar</button>
+      </div>
+
+      <div class="subtitulo-menu">🥁 METRÓNOMO</div>
+      <div class="fila-controles" style="gap:3px;">
+        <button class="btn btn-metronomo" id="btnMetronomo">▶ METRÓNOMO</button>
+        <button class="btn-clic activo" id="btnClic">🔊 CLIC</button>
+      </div>
+
+      <div class="subtitulo-menu">🔊 VOLUMEN BATERÍA</div>
+      <div style="display:flex; align-items:center; gap:6px; padding:0 4px;">
+        <span style="font-size:0.6rem;">🔈</span>
+        <input type="range" id="volumenSlider" min="0" max="1" step="0.05" value="0.7"
+               style="flex:1; accent-color:#ffb347;">
+        <span style="font-size:0.6rem;">🔊</span>
+      </div>
+
+      <div class="subtitulo-menu">🎵 VOLUMEN METRÓNOMO</div>
+      <div style="display:flex; align-items:center; gap:6px; padding:0 4px;">
+        <span style="font-size:0.6rem;">🔈</span>
+        <input type="range" id="volumenMetroSlider" min="0" max="1" step="0.05" value="0.5"
+               style="flex:1; accent-color:#e67e22;">
+        <span style="font-size:0.6rem;">🔊</span>
+      </div>
+
+      <div class="subtitulo-menu">⏱️ TEMPO (BPM)</div>
+      <div style="display:flex; align-items:center; gap:6px; padding:0 4px;">
+        <span style="font-size:0.6rem;">🐢</span>
+        <input type="range" id="tempoSlider" min="40" max="200" step="5" value="80"
+               style="flex:1; accent-color:#ffb347;">
+        <span id="tempoValor" style="color:#ffb347; font-size:0.65rem; font-weight:bold; min-width:25px;">80</span>
+        <span style="font-size:0.6rem;">🐇</span>
+      </div>
+
+      <div class="subtitulo-menu">📏 COMPÁS</div>
+      <div class="fila-opciones" id="selectorCompas">
+        <button class="btn-compas seleccionado" data-compas="4/4">4/4</button>
+        <button class="btn-compas" data-compas="3/4">3/4</button>
+        <button class="btn-compas" data-compas="6/8">6/8</button>
+        <button class="btn-compas" data-compas="2/4">2/4</button>
+        <button class="btn-compas" data-compas="5/4">5/4</button>
+        <button class="btn-compas" data-compas="7/8">7/8</button>
+      </div>
+
+      <div class="barra-calibracion" id="barraCalibracion">
+        <div class="titulo-cal">➕ AGREGAR INSTRUMENTO</div>
+        <div class="botones-add">
+          <button data-add="crash2">Crash 2</button>
+          <button data-add="splash">Splash</button>
+          <button data-add="china">China</button>
+          <button data-add="tom3">Tom 3</button>
+          <button data-add="cowbell">Cowbell</button>
+          <button data-add="ride2">Ride 2</button>
+        </div>
+        <div class="botones-add">
+          <button id="btnGuardar" class="primary">💾 Guardar</button>
+          <button id="btnReset" class="peligro">↺ Reset</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="menu-cuerpo-scroll">
+
+      <div class="etiqueta-nivel">NIVEL 1 · FUNDAMENTOS</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="pulsoBombo">1. Bombo</button>
+        <button class="btn-patron" data-patron="pulsoCaja">2. Caja</button>
+        <button class="btn-patron" data-patron="pulsoCharles">3. Charles</button>
+        <button class="btn-patron" data-patron="alterno">4. Alterno</button>
+      </div>
+
+      <div class="etiqueta-nivel n2">NIVEL 2 · CORCHEAS</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="charlesBombo">5. Ch+Bm</button>
+        <button class="btn-patron" data-patron="rockBasico">6. Rock</button>
+        <button class="btn-patron" data-patron="charlesCorcheas">7. Ch Cor</button>
+        <button class="btn-patron" data-patron="bomboCorcheas">8. Bm Cor</button>
+      </div>
+
+      <div class="etiqueta-nivel n3">NIVEL 3 · SÍNCOPA</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="contratiempo">9. Contrat.</button>
+        <button class="btn-patron" data-patron="semicorcheas">10. 16avos</button>
+        <button class="btn-patron" data-patron="redoble">11. Redoble</button>
+        <button class="btn-patron" data-patron="bomboSincopado">12. Síncopa</button>
+      </div>
+
+      <div class="etiqueta-nivel n4">NIVEL 4 · FOLCLOR</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="cueca">13. Cueca</button>
+        <button class="btn-patron" data-patron="tonada">14. Tonada</button>
+        <button class="btn-patron" data-patron="huayno">15. Huayno</button>
+        <button class="btn-patron" data-patron="shuffle">16. Shuffle</button>
+      </div>
+
+      <div class="etiqueta-nivel n5">NIVEL 5 · ESTILOS</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="reggae">17. Reggae</button>
+        <button class="btn-patron" data-patron="bossaNova">18. Bossa</button>
+        <button class="btn-patron" data-patron="blues">19. Blues</button>
+        <button class="btn-patron" data-patron="jazzSwing">20. Jazz</button>
+        <button class="btn-patron" data-patron="hipHop">21. Hip-Hop</button>
+        <button class="btn-patron" data-patron="samba">22. Samba</button>
+        <button class="btn-patron" data-patron="rockabilly">23. Rockab</button>
+        <button class="btn-patron" data-patron="motown">24. Motown</button>
+        <button class="btn-patron" data-patron="soloRock" style="grid-column: span 2;">25. Solo ★</button>
+      </div>
+
+      <div class="etiqueta-nivel n6">NIVEL 6 · EXPERTO</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="rockGhost">26. Ghost</button>
+        <button class="btn-patron" data-patron="rock7_8">27. 7/8</button>
+        <button class="btn-patron" data-patron="rock5_4">28. 5/4</button>
+        <button class="btn-patron" data-patron="funkGhost">29. Funk</button>
+        <button class="btn-patron" data-patron="soloRedoble">30. Solo Rd</button>
+        <button class="btn-patron" data-patron="rockComplejo">31. Complejo</button>
+      </div>
+
+      <div class="etiqueta-nivel nr">🥢 REDOBLES</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="redobleSimple">R1. Simple</button>
+        <button class="btn-patron" data-patron="redobleDoble">R2. Doble</button>
+        <button class="btn-patron" data-patron="paradiddle">R3. Paradid.</button>
+        <button class="btn-patron" data-patron="flam">R4. Flam</button>
+        <button class="btn-patron" data-patron="drag">R5. Drag</button>
+        <button class="btn-patron" data-patron="redoble5">R6. Redoble 5</button>
+      </div>
+
+      <div class="etiqueta-nivel nm">💥 REMATES</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="remate1">M1. Clásico</button>
+        <button class="btn-patron" data-patron="remate2">M2. Toms</button>
+        <button class="btn-patron" data-patron="remate3">M3. Ride</button>
+        <button class="btn-patron" data-patron="remate4">M4. Doble</button>
+        <button class="btn-patron" data-patron="remate5">M5. Solo T</button>
+        <button class="btn-patron" data-patron="remate6">M6. Final</button>
+      </div>
+
+      <div class="etiqueta-nivel np">🎵 EJERCICIOS DE PRÁCTICA 1</div>
+
+      <div class="subtitulo-menu" style="color:#ff8c1a;">ZONA NORTE · HUAYNO</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="pfHuaynoA">Huayno A</button>
+        <button class="btn-patron" data-patron="pfHuaynoB">Huayno B</button>
+        <button class="btn-patron" data-patron="pfHuaynoC">Huayno C</button>
+        <button class="btn-patron" data-patron="pfHuaynoClave">Huayno Clave</button>
+        <button class="btn-patron" data-patron="pfHuaynoRedoble6" style="grid-column: span 2;">Huayno Redoble 6</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#ff8c1a;">ZONA NORTE · TAKIRARI</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="pfTakirariA">Takirari A</button>
+        <button class="btn-patron" data-patron="pfTakirariB">Takirari B</button>
+        <button class="btn-patron" data-patron="pfTakirariRedoble" style="grid-column: span 2;">Takirari Redoble</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#ff8c1a;">ZONA NORTE · CUMBIÓN ANDINO</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="pfCumbionA">Cumbión A</button>
+        <button class="btn-patron" data-patron="pfCumbionB">Cumbión B</button>
+        <button class="btn-patron" data-patron="pfCumbionAcentos" style="grid-column: span 2;">Cumbión Acentos</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#ff8c1a;">ZONA NORTE · SAMBO CAPORAL 1</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="pfSambo1A">Sambo1 A</button>
+        <button class="btn-patron" data-patron="pfSambo1B">Sambo1 B</button>
+        <button class="btn-patron" data-patron="pfSambo1C">Sambo1 C</button>
+        <button class="btn-patron" data-patron="pfSambo1Redoble">Sambo1 Red.</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#ff8c1a;">ZONA NORTE · SAMBO CAPORAL 2</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="pfSambo2A">Sambo2 A</button>
+        <button class="btn-patron" data-patron="pfSambo2B">Sambo2 B</button>
+        <button class="btn-patron" data-patron="pfSambo2Clave" style="grid-column: span 2;">Sambo2 Clave</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#ff8c1a;">ZONA NORTE · SAYA</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="pfSayaA">Saya A</button>
+        <button class="btn-patron" data-patron="pfSayaB">Saya B</button>
+        <button class="btn-patron" data-patron="pfSayaRedoble" style="grid-column: span 2;">Saya Redoble</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#5dade2;">ZONA CENTRO · CUECA</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="pfCuecaA">Cueca A</button>
+        <button class="btn-patron" data-patron="pfCuecaB">Cueca B</button>
+        <button class="btn-patron" data-patron="pfCuecaC">Cueca C</button>
+        <button class="btn-patron" data-patron="pfCuecaCombo1">Combo 1</button>
+        <button class="btn-patron" data-patron="pfCuecaCombo2">Combo 2</button>
+        <button class="btn-patron" data-patron="pfCuecaVarBombo">Var.Bombo</button>
+        <button class="btn-patron" data-patron="pfCuecaZapat1">Zapat. 1</button>
+        <button class="btn-patron" data-patron="pfCuecaZapat2">Zapat. 2</button>
+        <button class="btn-patron" data-patron="pfCuecaOrq" style="grid-column: span 2;">Cueca Orquestada</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#5dade2;">ZONA CENTRO · TONADA</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="pfTonada1A">Tonada1 A</button>
+        <button class="btn-patron" data-patron="pfTonada1B">Tonada1 B</button>
+        <button class="btn-patron" data-patron="pfTonada2A">Tonada2 A</button>
+        <button class="btn-patron" data-patron="pfTonada2B">Tonada2 B</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#5dade2;">ZONA CENTRO · ZAPATEADO Y ACENTOS</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="pfZapateadoInic">Zapat. Inic.</button>
+        <button class="btn-patron" data-patron="pfZapateado">Zapateado</button>
+        <button class="btn-patron" data-patron="pfPresentacion">Presentación</button>
+        <button class="btn-patron" data-patron="pfAcento1">Acento 1</button>
+        <button class="btn-patron" data-patron="pfAcento2">Acento 2</button>
+        <button class="btn-patron" data-patron="pfRedobleCuecaA">Redoble A</button>
+        <button class="btn-patron" data-patron="pfRedobleCuecaB">Redoble B</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#9b59b6;">ZONA SUR</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="pfZambaA">Zamba A</button>
+        <button class="btn-patron" data-patron="pfZambaB">Zamba B</button>
+        <button class="btn-patron" data-patron="pfPericonaA">Pericona A</button>
+        <button class="btn-patron" data-patron="pfPericonaB">Pericona B</button>
+        <button class="btn-patron" data-patron="pfSirillaA">Sirilla A</button>
+        <button class="btn-patron" data-patron="pfSirillaB">Sirilla B</button>
+      </div>
+
+      <!-- ============================================ -->
+      <!-- EJERCICIOS DE PRÁCTICA 2 - Método Progresivo -->
+      <!-- ============================================ -->
+      <div class="etiqueta-nivel np2">🎵 EJERCICIOS DE PRÁCTICA 2</div>
+
+      <div class="subtitulo-menu" style="color:#ff8c1a;">GRUPO I · PLATILLOS OCTAVOS</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="mprOstA">Ost. A</button>
+        <button class="btn-patron" data-patron="mprOstB">Ost. B</button>
+        <button class="btn-patron" data-patron="mprOstC">Ost. C</button>
+        <button class="btn-patron" data-patron="mprOstD">Ost. D</button>
+        <button class="btn-patron" data-patron="mprOstE">Ost. E</button>
+        <button class="btn-patron" data-patron="mprOstF">Ost. F</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#ff8c1a;">GRUPO II · PLATILLOS 16AVOS</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="mpr16A">16avos A</button>
+        <button class="btn-patron" data-patron="mpr16B">16avos B</button>
+        <button class="btn-patron" data-patron="mpr16C">16avos C</button>
+        <button class="btn-patron" data-patron="mpr16D">16avos D</button>
+        <button class="btn-patron" data-patron="mpr16E">16avos E</button>
+        <button class="btn-patron" data-patron="mpr16F">16avos F</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#e67e22;">GRUPO III · OCTAVO + 2 16AVOS</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="mprOst2A">Ost2A</button>
+        <button class="btn-patron" data-patron="mprOst2B">Ost2B</button>
+        <button class="btn-patron" data-patron="mprOst2C">Ost2C</button>
+        <button class="btn-patron" data-patron="mprOst2D">Ost2D</button>
+        <button class="btn-patron" data-patron="mprOst2E">Ost2E</button>
+        <button class="btn-patron" data-patron="mprOst2F">Ost2F</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#e67e22;">GRUPO IV · DOS BOMBOS + 1 BOMBO</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="mprOst3A">Ost3A</button>
+        <button class="btn-patron" data-patron="mprOst3B">Ost3B</button>
+        <button class="btn-patron" data-patron="mprOst3C">Ost3C</button>
+        <button class="btn-patron" data-patron="mprOst3D">Ost3D</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#9b59b6;">GRUPO V · TRES BOMBOS SEGUIDOS</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="mprOst4A">Ost4A</button>
+        <button class="btn-patron" data-patron="mprOst4B">Ost4B</button>
+        <button class="btn-patron" data-patron="mprOst4C">Ost4C</button>
+        <button class="btn-patron" data-patron="mprOst4D">Ost4D</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#9b59b6;">GRUPO VI · 4 16AVOS (DOBLE BOMBO)</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="mprOst5A">Ost5A</button>
+        <button class="btn-patron" data-patron="mprOst5B">Ost5B</button>
+        <button class="btn-patron" data-patron="mprOst5C">Ost5C</button>
+        <button class="btn-patron" data-patron="mprOst5D">Ost5D</button>
+      </div>
+
+      <div class="subtitulo-menu" style="color:#2ecc71;">REDOBLES PROGRESIVOS · SAUCEDO</div>
+      <div class="grid-patrones">
+        <button class="btn-patron" data-patron="mprRed1">Red. 1</button>
+        <button class="btn-patron" data-patron="mprRed2">Red. 2</button>
+        <button class="btn-patron" data-patron="mprRed3">Red. 3</button>
+        <button class="btn-patron" data-patron="mprRed4">Red. 4</button>
+        <button class="btn-patron" data-patron="mprRed5">Red. 5</button>
+        <button class="btn-patron" data-patron="mprRed6">Red. 6</button>
+        <button class="btn-patron" data-patron="mprRed7">Red. 7</button>
+        <button class="btn-patron" data-patron="mprRed8">Red. 8</button>
+      </div>
+
+      <div class="subtitulo-menu">VELOCIDAD</div>
+      <div class="fila-opciones">
+        <button class="btn-velocidad" data-vel="0.55">🐢 Muy lenta</button>
+        <button class="btn-velocidad" data-vel="0.75">🚶 Lenta</button>
+        <button class="btn-velocidad seleccionado" data-vel="1">🏃 Normal</button>
+        <button class="btn-velocidad" data-vel="1.3">🐇 Rápida</button>
+      </div>
+
+      <div class="subtitulo-menu">ANTICIPACIÓN</div>
+      <div class="fila-opciones">
+        <button class="btn-anticipacion" data-ant="200">⚡ Corta</button>
+        <button class="btn-anticipacion seleccionado" data-ant="400">⏱ Media</button>
+        <button class="btn-anticipacion" data-ant="700">🐢 Larga</button>
+        <button class="btn-anticipacion" data-ant="1000">🦥 Muy larga</button>
+      </div>
+
+      <div class="instruccion" id="instruccion">Elige un ejercicio</div>
+
+    </div>
+
+  </aside>
+
+  <main class="bateria-escenario" id="bateriaEscenario">
+    <img id="imagenBateria" alt="Batería acústica completa" />
+    <canvas id="canvasAnimacion"></canvas>
+    <div id="contenedorZonas"></div>
+    <canvas id="canvasBaquetas"></canvas>
+    <div class="metronomo-pulso" id="metronomoPulso"></div>
+  </main>
+
+</div>
+
+<script>
+// ============================================================
+// CARGA DINÁMICA DE SMPLR
+// ============================================================
+let DrumMachine = null;
+
+(function cargarSmplr() {
+  import('https://cdn.jsdelivr.net/npm/smplr@latest/dist/index.js')
+    .then(mod => {
+      DrumMachine = mod.DrumMachine;
+      console.log('✅ smplr cargado correctamente');
+    })
+    .catch(e => {
+      console.warn('⚠️ No se pudo cargar smplr, usando síntesis', e);
+    });
+})();
+
+// ============================================================
+// IMAGEN
+// ============================================================
+const imagenEl = document.getElementById('imagenBateria');
+imagenEl.onerror = () => {
+  imagenEl.style.display = 'none';
+  const aviso = document.createElement('div');
+  aviso.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#666;font-size:0.9rem;text-align:center;padding:20px;z-index:1;';
+  aviso.innerHTML = '⚠ No se encontró <b>Bateria.png</b><br>Verifica que esté en la misma carpeta que este HTML';
+  document.getElementById('bateriaEscenario').appendChild(aviso);
+};
+imagenEl.src = 'Bateria.png';
+
+// ============================================================
+// POSICIONES POR DEFECTO
+// ============================================================
+const POSICIONES_DEFECTO = {
+  crash:     { x: 24, y: 22, w: 18, h: 12, etiqueta: 'Crash' },
+  crash2:    { x: 66, y: 20, w: 18, h: 12, etiqueta: 'Crash 2' },
+  charles:   { x: 16, y: 42, w: 17, h: 13, etiqueta: 'Charles' },
+  ride:      { x: 84, y: 38, w: 20, h: 14, etiqueta: 'Ride' },
+  tom1:      { x: 40, y: 38, w: 14, h: 13, etiqueta: 'Tom 1' },
+  tom2:      { x: 62, y: 38, w: 14, h: 13, etiqueta: 'Tom 2' },
+  caja:      { x: 32, y: 65, w: 18, h: 15, etiqueta: 'Caja' },
+  floortom:  { x: 78, y: 66, w: 20, h: 20, etiqueta: 'Tom de suelo' },
+  bombo:     { x: 54, y: 76, w: 30, h: 22, etiqueta: 'Bombo' }
+};
+
+const CATALOGO = {
+  crash:   { etiqueta: 'Crash', color: '#ffd93d' },
+  crash2:  { etiqueta: 'Crash 2', color: '#ffd93d' },
+  splash:  { etiqueta: 'Splash', color: '#ffd93d' },
+  china:   { etiqueta: 'China', color: '#ffd93d' },
+  ride:    { etiqueta: 'Ride', color: '#ffd93d' },
+  ride2:   { etiqueta: 'Ride 2', color: '#ffd93d' },
+  charles: { etiqueta: 'Charles', color: '#ffd93d' },
+  tom1:    { etiqueta: 'Tom 1', color: '#5dade2' },
+  tom2:    { etiqueta: 'Tom 2', color: '#5dade2' },
+  tom3:    { etiqueta: 'Tom 3', color: '#5dade2' },
+  caja:    { etiqueta: 'Caja', color: '#5dade2' },
+  floortom:{ etiqueta: 'Tom de suelo', color: '#5dade2' },
+  bombo:   { etiqueta: 'Bombo', color: '#ffffff' },
+  cowbell: { etiqueta: 'Cowbell', color: '#ffd93d' }
+};
+
+let posicionesZonas = JSON.parse(JSON.stringify(POSICIONES_DEFECTO));
+
+// ============================================================
+// PATRONES
+// ============================================================
+const patrones = {
+  // ===== NIVEL 1 =====
+  pulsoBombo: { nombre: '1. Bombo', bpm: 60, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }], texto: 'Bombo en el 1' },
+    { golpes: [{ inst: 'bombo', tiempo: 0 }], texto: 'Bombo en el 2' },
+    { golpes: [{ inst: 'bombo', tiempo: 0 }], texto: 'Bombo en el 3' },
+    { golpes: [{ inst: 'bombo', tiempo: 0 }], texto: 'Bombo en el 4' }
+  ]},
+  pulsoCaja: { nombre: '2. Caja', bpm: 60, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0 }], texto: 'Caja en el 1' },
+    { golpes: [{ inst: 'caja', tiempo: 0 }], texto: 'Caja en el 2' },
+    { golpes: [{ inst: 'caja', tiempo: 0 }], texto: 'Caja en el 3' },
+    { golpes: [{ inst: 'caja', tiempo: 0 }], texto: 'Caja en el 4' }
+  ]},
+  pulsoCharles: { nombre: '3. Pulso Charles', bpm: 60, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Charles en el 1' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Charles en el 2' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Charles en el 3' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Charles en el 4' }
+  ]},
+  alterno: { nombre: '4. Alterno', bpm: 65, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }], texto: 'Bombo' },
+    { golpes: [{ inst: 'caja', tiempo: 0 }], texto: 'Caja' },
+    { golpes: [{ inst: 'bombo', tiempo: 0 }], texto: 'Bombo' },
+    { golpes: [{ inst: 'caja', tiempo: 0 }], texto: 'Caja' }
+  ]},
+  // ===== NIVEL 2 =====
+  charlesBombo: { nombre: '5. Charles+Bombo', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Charles + Bombo' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Charles' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Charles + Bombo' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Charles' }
+  ]},
+  rockBasico: { nombre: '6. Rock Básico', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Charles + Bombo' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: 'Charles + Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Charles + Bombo' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: 'Charles + Caja' }
+  ]},
+  charlesCorcheas: { nombre: '7. Charles Corcheas', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '1-y (Bombo)' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: '2-y (Caja)' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '3-y (Bombo)' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: '4-y (Caja)' }
+  ]},
+  bomboCorcheas: { nombre: '8. Bombo Corcheas', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bombo 1' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bombo en "y"' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bombo 3' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bombo en "y"' }
+  ]},
+  // ===== NIVEL 3 =====
+  contratiempo: { nombre: '9. Contratiempo', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bombo 1' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: '¡Contratiempo!' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bombo 3' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: '¡Contratiempo!' }
+  ]},
+  semicorcheas: { nombre: '10. 16avos', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0 }], texto: '16avos + Bombo' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'caja', tiempo: 0 }], texto: '16avos + Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0 }], texto: '16avos + Bombo' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'caja', tiempo: 0 }], texto: '16avos + Caja' }
+  ]},
+  redoble: { nombre: '11. Redoble', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Charles + Bombo' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' }
+  ]},
+  bomboSincopado: { nombre: '12. Síncopa', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bombo 1' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.25 }], texto: '¡Síncopa!' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bombo 3' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.25 }], texto: '¡Síncopa!' }
+  ]},
+  // ===== NIVEL 4 =====
+  cueca: { nombre: '13. Cueca', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Cueca' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: 'Cueca' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Cueca' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: 'Cueca' }
+  ]},
+  tonada: { nombre: '14. Tonada', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Tonada' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: 'Contratiempo' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Tonada' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: 'Contratiempo' }
+  ]},
+  huayno: { nombre: '15. Huayno', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Huayno' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0.5 }], texto: 'Caja atrás' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Huayno' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0.5 }], texto: 'Caja atrás' }
+  ]},
+  shuffle: { nombre: '16. Shuffle', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.33 }, { inst: 'bombo', tiempo: 0 }], texto: 'Shuffle' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.33 }, { inst: 'caja', tiempo: 0 }], texto: 'Shuffle' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.33 }, { inst: 'bombo', tiempo: 0 }], texto: 'Shuffle' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.33 }, { inst: 'caja', tiempo: 0 }], texto: 'Shuffle' }
+  ]},
+  // ===== NIVEL 5 =====
+  reggae: { nombre: '17. Reggae', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Reggae' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: 'Reggae' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: '¡One Drop!' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: 'Reggae' }
+  ]},
+  bossaNova: { nombre: '18. Bossa Nova', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bossa' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: 'Bossa' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0.5 }], texto: 'Bossa' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: 'Bossa' }
+  ]},
+  blues: { nombre: '19. Blues', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.33 }, { inst: 'bombo', tiempo: 0 }], texto: 'Blues' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.33 }, { inst: 'caja', tiempo: 0 }], texto: 'Blues' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.33 }, { inst: 'bombo', tiempo: 0 }], texto: 'Blues' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.33 }, { inst: 'caja', tiempo: 0 }], texto: 'Blues' }
+  ]},
+  jazzSwing: { nombre: '20. Jazz Swing', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'ride', tiempo: 0 }, { inst: 'ride', tiempo: 0.33 }, { inst: 'bombo', tiempo: 0 }], texto: 'Jazz' },
+    { golpes: [{ inst: 'ride', tiempo: 0 }, { inst: 'ride', tiempo: 0.33 }, { inst: 'caja', tiempo: 0 }, { inst: 'charles', tiempo: 0 }], texto: 'Jazz' },
+    { golpes: [{ inst: 'ride', tiempo: 0 }, { inst: 'ride', tiempo: 0.33 }, { inst: 'bombo', tiempo: 0 }], texto: 'Jazz' },
+    { golpes: [{ inst: 'ride', tiempo: 0 }, { inst: 'ride', tiempo: 0.33 }, { inst: 'caja', tiempo: 0 }, { inst: 'charles', tiempo: 0 }], texto: 'Jazz' }
+  ]},
+  hipHop: { nombre: '21. Hip-Hop', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Hip-Hop' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: 'Hip-Hop' },
+    { golpes: [{ inst: 'charles', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }], texto: '¡Síncopa!' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: 'Hip-Hop' }
+  ]},
+  samba: { nombre: '22. Samba', bpm: 100, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0.25 }], texto: 'Samba' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Samba' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0.25 }], texto: 'Samba' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Samba' }
+  ]},
+  rockabilly: { nombre: '23. Rockabilly', bpm: 95, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: 'Rockabilly' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: 'Rockabilly' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: 'Rockabilly' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0 }], texto: 'Rockabilly' }
+  ]},
+  motown: { nombre: '24. Motown', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Motown' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: 'Motown' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Motown' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: 'Motown' }
+  ]},
+  soloRock: { nombre: '25. Solo Rock', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Groove' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: 'Groove' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Groove' },
+    { golpes: [{ inst: 'caja', tiempo: 0 }, { inst: 'tom1', tiempo: 0.5 }], texto: '¡Tom 1!' },
+    { golpes: [{ inst: 'tom2', tiempo: 0 }], texto: '¡Tom 2!' },
+    { golpes: [{ inst: 'floortom', tiempo: 0 }], texto: '¡Tom suelo!' },
+    { golpes: [{ inst: 'caja', tiempo: 0 }, { inst: 'crash', tiempo: 0.5 }], texto: '¡Final!' }
+  ]},
+  // ===== NIVEL 6 =====
+  rockGhost: { nombre: '26. Rock Ghost', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Groove' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Groove' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' }
+  ]},
+  rock7_8: { nombre: '27. Rock 7/8', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '7/8' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: '7/8' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '7/8' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: '7/8' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '7/8' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: '7/8' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '7/8' }
+  ]},
+  rock5_4: { nombre: '28. Rock 5/4', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '5/4' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: '5/4' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '5/4' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: '5/4' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '5/4' }
+  ]},
+  funkGhost: { nombre: '29. Funk Ghost', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Funk' },
+    { golpes: [{ inst: 'charles', tiempo: 0.25 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'Ghost' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.25 }], texto: '¡Síncopa!' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }], texto: 'Funk' }
+  ]},
+  soloRedoble: { nombre: '30. Solo Redoble', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'tom1', tiempo: 0, mano: 'D' }, { inst: 'tom1', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'tom2', tiempo: 0, mano: 'I' }, { inst: 'tom2', tiempo: 0.25, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'floortom', tiempo: 0, mano: 'D' }, { inst: 'floortom', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'crash', tiempo: 0.5, mano: 'D' }], texto: 'I + D' }
+  ]},
+  rockComplejo: { nombre: '31. Rock Complejo', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bombo doble' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }], texto: 'Bombo sínc.' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0 }, { inst: 'crash', tiempo: 0.5 }], texto: '¡Crash!' }
+  ]},
+  // ===== REDOBLES =====
+  redobleSimple: { nombre: 'R1. Simple', bpm: 60, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' }
+  ]},
+  redobleDoble: { nombre: 'R2. Doble', bpm: 60, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' }
+  ]},
+  paradiddle: { nombre: 'R3. Paradiddle', bpm: 65, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' }
+  ]},
+  flam: { nombre: 'R4. Flam', bpm: 60, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.1, mano: 'D' }], texto: 'Flam D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.1, mano: 'I' }], texto: 'Flam I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.1, mano: 'D' }], texto: 'Flam D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.1, mano: 'I' }], texto: 'Flam I' }
+  ]},
+  drag: { nombre: 'R5. Drag', bpm: 60, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.08, mano: 'I' }, { inst: 'caja', tiempo: 0.16, mano: 'D' }], texto: 'Drag D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.08, mano: 'D' }, { inst: 'caja', tiempo: 0.16, mano: 'I' }], texto: 'Drag I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.08, mano: 'I' }, { inst: 'caja', tiempo: 0.16, mano: 'D' }], texto: 'Drag D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.08, mano: 'D' }, { inst: 'caja', tiempo: 0.16, mano: 'I' }], texto: 'Drag I' }
+  ]},
+  redoble5: { nombre: 'R6. Redoble 5', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'I I' }
+  ]},
+  // ===== REMATES =====
+  remate1: { nombre: 'M1. Remate Clásico', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'crash', tiempo: 0 }], texto: '¡Crash!' },
+    { golpes: [{ inst: 'tom1', tiempo: 0, mano: 'D' }], texto: 'Tom 1' },
+    { golpes: [{ inst: 'tom2', tiempo: 0, mano: 'D' }], texto: 'Tom 2' },
+    { golpes: [{ inst: 'floortom', tiempo: 0, mano: 'I' }], texto: 'Suelo' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja' },
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'crash', tiempo: 0, mano: 'D' }], texto: '¡Bm + Crash!' }
+  ]},
+  remate2: { nombre: 'M2. Descenso Toms', bpm: 95, pulsos: [
+    { golpes: [{ inst: 'crash2', tiempo: 0 }], texto: '¡Crash 2!' },
+    { golpes: [{ inst: 'tom1', tiempo: 0, mano: 'D' }, { inst: 'tom1', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'tom2', tiempo: 0, mano: 'I' }, { inst: 'tom2', tiempo: 0.5, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'floortom', tiempo: 0, mano: 'D' }, { inst: 'floortom', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'bombo', tiempo: 0 }], texto: '¡Bombo!' }
+  ]},
+  remate3: { nombre: 'M3. Vuelta Ride', bpm: 100, pulsos: [
+    { golpes: [{ inst: 'ride', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '¡Ride!' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja' },
+    { golpes: [{ inst: 'tom1', tiempo: 0, mano: 'D' }, { inst: 'tom2', tiempo: 0.5, mano: 'I' }], texto: 'Toms' },
+    { golpes: [{ inst: 'floortom', tiempo: 0, mano: 'D' }], texto: 'Suelo' },
+    { golpes: [{ inst: 'crash', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '¡Final!' }
+  ]},
+  remate4: { nombre: 'M4. Doble Crash', bpm: 100, pulsos: [
+    { golpes: [{ inst: 'crash', tiempo: 0 }], texto: '¡Crash 1!' },
+    { golpes: [{ inst: 'crash2', tiempo: 0 }], texto: '¡Crash 2!' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'tom1', tiempo: 0, mano: 'D' }], texto: 'Tom 1' },
+    { golpes: [{ inst: 'tom2', tiempo: 0, mano: 'D' }], texto: 'Tom 2' },
+    { golpes: [{ inst: 'floortom', tiempo: 0, mano: 'I' }], texto: 'Suelo' },
+    { golpes: [{ inst: 'crash', tiempo: 0 }, { inst: 'crash2', tiempo: 0.15 }, { inst: 'bombo', tiempo: 0 }], texto: '¡Doble Crash!' }
+  ]},
+  remate5: { nombre: 'M5. Solo Toms', bpm: 95, pulsos: [
+    { golpes: [{ inst: 'crash', tiempo: 0 }], texto: '¡Inicio!' },
+    { golpes: [{ inst: 'tom1', tiempo: 0, mano: 'D' }, { inst: 'tom1', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'tom2', tiempo: 0, mano: 'I' }, { inst: 'tom2', tiempo: 0.25, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'floortom', tiempo: 0, mano: 'D' }, { inst: 'floortom', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'tom2', tiempo: 0, mano: 'I' }, { inst: 'tom2', tiempo: 0.25, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'tom1', tiempo: 0, mano: 'D' }, { inst: 'tom1', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'crash', tiempo: 0 }], texto: '¡Final!' }
+  ]},
+  remate6: { nombre: 'M6. Gran Final', bpm: 105, pulsos: [
+    { golpes: [{ inst: 'crash', tiempo: 0 }, { inst: 'crash2', tiempo: 0.15 }, { inst: 'bombo', tiempo: 0 }], texto: '¡Doble Crash!' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'tom1', tiempo: 0, mano: 'I' }, { inst: 'tom1', tiempo: 0.25, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'tom2', tiempo: 0, mano: 'D' }, { inst: 'tom2', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'floortom', tiempo: 0, mano: 'I' }, { inst: 'floortom', tiempo: 0.25, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'crash', tiempo: 0 }, { inst: 'crash2', tiempo: 0 }, { inst: 'ride', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: '¡¡GRAN FINAL!!' }
+  ]},
+
+  // ===== EJERCICIOS DE PRÁCTICA 1 (Páez Franco) =====
+  pfHuaynoA: { nombre: 'Huayno A', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' }
+  ]},
+  pfHuaynoB: { nombre: 'Huayno B', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' }
+  ]},
+  pfHuaynoC: { nombre: 'Huayno C', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' }
+  ]},
+  pfHuaynoClave: { nombre: 'Huayno Clave', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' }
+  ]},
+  pfHuaynoRedoble6: { nombre: 'Huayno Redoble 6', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }], texto: 'Huayno' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' }
+  ]},
+  pfTakirariA: { nombre: 'Takirari A', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' }
+  ]},
+  pfTakirariB: { nombre: 'Takirari B', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' }
+  ]},
+  pfTakirariRedoble: { nombre: 'Takirari Redoble', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }], texto: 'Taki' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' },
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }], texto: 'Taki' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I D I' }
+  ]},
+  pfCumbionA: { nombre: 'Cumbión A', bpm: 95, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' }
+  ]},
+  pfCumbionB: { nombre: 'Cumbión B', bpm: 95, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' }
+  ]},
+  pfCumbionAcentos: { nombre: 'Cumbión Acentos', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: '¡ACENTO!' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }], texto: 'Ostinato' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'I D' }
+  ]},
+  pfSambo1A: { nombre: 'Sambo1 A', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' }
+  ]},
+  pfSambo1B: { nombre: 'Sambo1 B', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' }
+  ]},
+  pfSambo1C: { nombre: 'Sambo1 C', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' }
+  ]},
+  pfSambo1Redoble: { nombre: 'Sambo1 Redoble', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }], texto: 'Sambo1' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' }
+  ]},
+  pfSambo2A: { nombre: 'Sambo2 A', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' }
+  ]},
+  pfSambo2B: { nombre: 'Sambo2 B', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' }
+  ]},
+  pfSambo2Clave: { nombre: 'Sambo2 Clave', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' }
+  ]},
+  pfSayaA: { nombre: 'Saya A', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' }
+  ]},
+  pfSayaB: { nombre: 'Saya B', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' }
+  ]},
+  pfSayaRedoble: { nombre: 'Saya Redoble', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }], texto: 'Saya' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' },
+    { golpes: [{ inst: 'bombo', tiempo: 0 }, { inst: 'charles', tiempo: 0 }], texto: 'Saya' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I D I' }
+  ]},
+  pfCuecaA: { nombre: 'Cueca A', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' }
+  ]},
+  pfCuecaB: { nombre: 'Cueca B', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Cueca' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'charles', tiempo: 0.5 }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfCuecaC: { nombre: 'Cueca C', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }, { inst: 'caja', tiempo: 0.75, mano: 'D' }], texto: 'I I D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }, { inst: 'caja', tiempo: 0.75, mano: 'D' }], texto: 'I I D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }, { inst: 'caja', tiempo: 0.75, mano: 'D' }], texto: 'I I D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }, { inst: 'caja', tiempo: 0.75, mano: 'D' }], texto: 'I I D D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfCuecaCombo1: { nombre: 'Cueca Combo 1', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Cueca' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'charles', tiempo: 0.5 }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfCuecaCombo2: { nombre: 'Cueca Combo 2', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Cueca' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'charles', tiempo: 0.5 }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D I I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfCuecaVarBombo: { nombre: 'Cueca Var.Bombo', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bombo' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bombo' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bombo' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' }
+  ]},
+  pfCuecaOrq: { nombre: 'Cueca Orquestada', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D' }
+  ]},
+  pfTonada1A: { nombre: 'Tonada1 A', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' }
+  ]},
+  pfTonada1B: { nombre: 'Tonada1 B', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Tonada1' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'charles', tiempo: 0.5 }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfTonada2A: { nombre: 'Tonada2 A', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' }
+  ]},
+  pfTonada2B: { nombre: 'Tonada2 B', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Tonada2' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }, { inst: 'charles', tiempo: 0.5 }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'charles', tiempo: 0.5 }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'charles', tiempo: 0.5 }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' }
+  ]},
+  pfZapateadoInic: { nombre: 'Zapateado Inic.', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' }
+  ]},
+  pfCuecaZapat1: { nombre: 'Cueca Zapat. 1', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' }
+  ]},
+  pfCuecaZapat2: { nombre: 'Cueca Zapat. 2', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' }
+  ]},
+  pfZapateado: { nombre: 'Zapateado', bpm: 90, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfPresentacion: { nombre: 'Presentación', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D' }
+  ]},
+  pfAcento1: { nombre: 'Acento 1', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: '¡ACENTO D!' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfAcento2: { nombre: 'Acento 2', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }], texto: 'Ch' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: '¡ACENTO D!' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: '¡ACENTO I!' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfRedobleCuecaA: { nombre: 'Redoble A', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfRedobleCuecaB: { nombre: 'Redoble B', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D I D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfZambaA: { nombre: 'Zamba A', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' }
+  ]},
+  pfZambaB: { nombre: 'Zamba B', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'charles', tiempo: 0.5 }], texto: 'D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'charles', tiempo: 0.5 }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'charles', tiempo: 0.5 }], texto: 'D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'charles', tiempo: 0.5 }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfPericonaA: { nombre: 'Pericona A', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' }
+  ]},
+  pfPericonaB: { nombre: 'Pericona B', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'charles', tiempo: 0.5 }], texto: 'I' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'charles', tiempo: 0.5 }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+  pfSirillaA: { nombre: 'Sirilla A', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }], texto: 'Ch' }
+  ]},
+  pfSirillaB: { nombre: 'Sirilla B', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'bombo', tiempo: 0 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0.5, mano: 'D' }, { inst: 'charles', tiempo: 0.5 }], texto: 'D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }], texto: 'Ch' }
+  ]},
+
+  // ============================================================
+  // EJERCICIOS DE PRÁCTICA 2 - Método Progresivo de Rock Vol I
+  // (David Saucedo Cadena)
+  // ============================================================
+
+  // ===== GRUPO I: PLATILLOS A OCTAVOS =====
+  mprOstA: { nombre: 'MPR I-A', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }], texto: 'Ostinato A' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }], texto: 'Charles' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }], texto: 'Charles' }
+  ]},
+  mprOstB: { nombre: 'MPR I-B', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bombo doble' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }], texto: 'Charles' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }], texto: 'Charles' }
+  ]},
+  mprOstC: { nombre: 'MPR I-C', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bombo 1' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bombo en "y"' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }], texto: 'Charles' }
+  ]},
+  mprOstD: { nombre: 'MPR I-D', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }], texto: 'Síncopa' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bombo' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOstE: { nombre: 'MPR I-E', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bombo doble' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.25 }], texto: 'Síncopa' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOstF: { nombre: 'MPR I-F', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bombo 1' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bombo "y"' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+
+  // ===== GRUPO II: PLATILLOS A 16AVOS =====
+  mpr16A: { nombre: 'MPR II-A', bpm: 65, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'bombo', tiempo: 0 }], texto: '16avos + Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }], texto: '16avos' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }], texto: '16avos' }
+  ]},
+  mpr16B: { nombre: 'MPR II-B', bpm: 65, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bm doble' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }], texto: '16avos' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mpr16C: { nombre: 'MPR II-C', bpm: 65, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }], texto: 'Síncopa' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bm "y"' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mpr16D: { nombre: 'MPR II-D', bpm: 65, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.75 }], texto: 'Bm 1 y 4' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja D' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'bombo', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bm 2 y 3' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mpr16E: { nombre: 'MPR II-E', bpm: 65, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'bombo', tiempo: 0 }], texto: 'Ostinato' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bm "y"' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mpr16F: { nombre: 'MPR II-F', bpm: 65, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bm doble' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'bombo', tiempo: 0.75 }], texto: 'Bm final' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.25 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'charles', tiempo: 0.75 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja D' }
+  ]},
+
+  // ===== GRUPO III: OCTAVO + 2 16AVOS =====
+  mprOst2A: { nombre: 'MPR III-A', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: 'Oct + 2 16avos' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }], texto: 'Charles' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst2B: { nombre: 'MPR III-B', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bm 1' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: 'Bm + 16' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }], texto: 'Charles' }
+  ]},
+  mprOst2C: { nombre: 'MPR III-C', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Síncopa' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: 'Bm + 16' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst2D: { nombre: 'MPR III-D', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: 'Bm x3' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'Caja "y"' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst2E: { nombre: 'MPR III-E', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.25 }], texto: 'Bm 16' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: 'Bm x3' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }], texto: 'Charles' }
+  ]},
+  mprOst2F: { nombre: 'MPR III-F', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }], texto: 'Bm 1-16' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: 'Bm 3-4' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+
+  // ===== GRUPO IV: DOS BOMBOS + 1 BOMBO =====
+  mprOst3A: { nombre: 'MPR IV-A', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }], texto: '2 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.25 }], texto: 'Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst3B: { nombre: 'MPR IV-B', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bm 1' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }], texto: '2 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst3C: { nombre: 'MPR IV-C', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.75 }], texto: '2 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.5 }], texto: 'Bm "y"' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst3D: { nombre: 'MPR IV-D', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }], texto: '2 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: 'Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+
+  // ===== GRUPO V: TRES BOMBOS SEGUIDOS =====
+  mprOst4A: { nombre: 'MPR V-A', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: '3 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }], texto: 'Charles' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst4B: { nombre: 'MPR V-B', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }], texto: 'Bm 1' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: '3 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst4C: { nombre: 'MPR V-C', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }], texto: '3 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: 'Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst4D: { nombre: 'MPR V-D', bpm: 80, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: '2 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }], texto: '2 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+
+  // ===== GRUPO VI: 4 16AVOS (DOBLE BOMBO) =====
+  mprOst5A: { nombre: 'MPR VI-A', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: '4 Bm 16avos' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }], texto: 'Charles' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst5B: { nombre: 'MPR VI-B', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }], texto: '2 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }], texto: '2 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst5C: { nombre: 'MPR VI-C', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: '4 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.75 }], texto: '4 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+  mprOst5D: { nombre: 'MPR VI-D', bpm: 85, pulsos: [
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0.25 }, { inst: 'bombo', tiempo: 0.5 }], texto: '2 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'bombo', tiempo: 0 }, { inst: 'bombo', tiempo: 0.75 }], texto: '2 Bm' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'D' }], texto: 'Caja' },
+    { golpes: [{ inst: 'charles', tiempo: 0 }, { inst: 'charles', tiempo: 0.5 }, { inst: 'caja', tiempo: 0, mano: 'I' }], texto: 'Caja I' }
+  ]},
+
+  // ===== REDOBLES PROGRESIVOS SAUCEDO =====
+  mprRed1: { nombre: 'Red. 1', bpm: 60, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D I' }
+  ]},
+  mprRed2: { nombre: 'Red. 2', bpm: 60, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D I D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'D' }], texto: 'I D I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D I D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'D' }], texto: 'I D I D' }
+  ]},
+  mprRed3: { nombre: 'Red. 3', bpm: 60, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I I' }
+  ]},
+  mprRed4: { nombre: 'Red. 4', bpm: 65, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'D I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'I D I' }
+  ]},
+  mprRed5: { nombre: 'Red. 5', bpm: 65, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'I D' }
+  ]},
+  mprRed6: { nombre: 'Red. 6', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }], texto: 'D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }], texto: 'I I' }
+  ]},
+  mprRed7: { nombre: 'Red. 7', bpm: 70, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I I D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }], texto: 'D D I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }], texto: 'I I D' }
+  ]},
+  mprRed8: { nombre: 'Red. 8', bpm: 75, pulsos: [
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }, { inst: 'caja', tiempo: 0.75, mano: 'D' }], texto: 'I I D D' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'D' }, { inst: 'caja', tiempo: 0.25, mano: 'D' }, { inst: 'caja', tiempo: 0.5, mano: 'I' }, { inst: 'caja', tiempo: 0.75, mano: 'I' }], texto: 'D D I I' },
+    { golpes: [{ inst: 'caja', tiempo: 0, mano: 'I' }, { inst: 'caja', tiempo: 0.25, mano: 'I' }, { inst: 'caja', tiempo: 0.5, mano: 'D' }, { inst: 'caja', tiempo: 0.75, mano: 'D' }], texto: 'I I D D' }
+  ]}
+};
+
+// ============================================================
+// ESTADO
+// ============================================================
+let audioCtx = null;
+let gananciaVolumen = null;
+let gananciaMetronomo = null;
+let drumMachine = null;
+let estaReproduciendo = false;
+let patronActual = 'rockBasico';
+let indicePulso = 0;
+let intervaloRitmo = null;
+let factorVelocidad = 1;
+let anticipacionMs = 400;
+let tempoBase = 80;
+let compasActual = '4/4';
+let timeoutsGolpes = [];
+let timeoutsAnticipacion = [];
+let modoCalibracion = false;
+
+// Metrónomo
+let metronomoActivo = false;
+let clicActivo = true;
+let intervaloMetronomo = null;
+let pulsoMetronomo = 0;
+
+let canvas, ctx, animationFrame;
+let canvasBaq, ctxBaq;
+let bola = { x: 0, y: 0, objetivoX: 0, objetivoY: 0, radio: 9, activa: false, color: '#ffb347' };
+let rastro = [];
+let ondaExpansiva = null;
+
+let baquetaIzq = { x: 0, y: 0, angulo: -0.5, objetivoX: 0, objetivoY: 0, objetivoAngulo: -0.5, visible: true };
+let baquetaDer = { x: 0, y: 0, angulo: 0.5, objetivoX: 0, objetivoY: 0, objetivoAngulo: 0.5, visible: true };
+
+const lucesPulso = document.querySelectorAll('.luz-pulso');
+const btnPlay = document.getElementById('btnPlay');
+const btnCalibrar = document.getElementById('btnCalibrar');
+const btnEtiquetas = document.getElementById('btnEtiquetas');
+const btnMetronomo = document.getElementById('btnMetronomo');
+const btnClic = document.getElementById('btnClic');
+const btnGuardar = document.getElementById('btnGuardar');
+const btnReset = document.getElementById('btnReset');
+const barraCalibracion = document.getElementById('barraCalibracion');
+const instruccionEl = document.getElementById('instruccion');
+const escenario = document.getElementById('bateriaEscenario');
+const contenedorZonas = document.getElementById('contenedorZonas');
+const metronomoPulsoEl = document.getElementById('metronomoPulso');
+
+// ============================================================
+// AUDIO
+// ============================================================
+function inicializarAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    gananciaVolumen = audioCtx.createGain();
+    gananciaVolumen.gain.value = parseFloat(document.getElementById('volumenSlider').value);
+    gananciaVolumen.connect(audioCtx.destination);
+
+    gananciaMetronomo = audioCtx.createGain();
+    gananciaMetronomo.gain.value = parseFloat(document.getElementById('volumenMetroSlider').value);
+    gananciaMetronomo.connect(audioCtx.destination);
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function inicializarSonidos() {
+  inicializarAudio();
+  if (!DrumMachine) {
+    console.warn('⚠️ smplr no disponible, usando síntesis');
+    return;
+  }
+  try {
+    drumMachine = DrumMachine(audioCtx, {
+      instrument: 'fluidr3',
+      destination: gananciaVolumen
+    });
+    drumMachine.ready.then(() => {
+      console.log('✅ Batería cargada con samples reales');
+    }).catch(e => {
+      console.warn('⚠️ Error al esperar samples', e);
+      drumMachine = null;
+    });
+  } catch (e) {
+    console.warn('⚠️ Error al crear DrumMachine', e);
+    drumMachine = null;
+  }
+}
+
+const mapeoMIDI = {
+  bombo:    36,
+  caja:     38,
+  charles:  42,
+  ride:     51,
+  crash:    49,
+  tom1:     50,
+  tom2:     47,
+  floortom: 43,
+  splash:   55,
+  china:    52,
+  cowbell:  56
+};
+
+function reproducirSonidoReal(instrumento) {
+  if (!drumMachine) return false;
+  let notaMIDI = mapeoMIDI[instrumento];
+  if (instrumento.startsWith('crash')) notaMIDI = mapeoMIDI.crash;
+  else if (instrumento.startsWith('ride')) notaMIDI = mapeoMIDI.ride;
+  else if (instrumento.startsWith('tom')) notaMIDI = mapeoMIDI.tom1;
+  else if (instrumento === 'floortom') notaMIDI = mapeoMIDI.floortom;
+  if (!notaMIDI) return false;
+  const velocity = instrumento === 'bombo' ? 110 : instrumento === 'caja' ? 100 : 90;
+  try {
+    drumMachine.start({ note: notaMIDI, velocity: velocity });
+    return true;
+  } catch (e) { return false; }
+}
+
+function reproducirSonidoSintetizado(instrumento) {
+  const c = audioCtx;
+  const ahora = c.currentTime;
+  let nodoSalida = gananciaVolumen || c.destination;
+  let tipo = instrumento;
+  if (instrumento.startsWith('crash') || instrumento.startsWith('splash') || instrumento.startsWith('china')) tipo = 'crash';
+  else if (instrumento.startsWith('ride')) tipo = 'ride';
+  else if (instrumento.startsWith('tom')) tipo = 'tom1';
+  else if (instrumento === 'floortom') tipo = 'floortom';
+  else if (instrumento === 'cowbell') tipo = 'cowbell';
+
+  switch(tipo) {
+    case 'bombo': {
+      const osc = c.createOscillator(); const gain = c.createGain();
+      osc.frequency.setValueAtTime(160, ahora);
+      osc.frequency.exponentialRampToValueAtTime(40, ahora + 0.15);
+      gain.gain.setValueAtTime(1, ahora);
+      gain.gain.exponentialRampToValueAtTime(0.001, ahora + 0.35);
+      osc.connect(gain).connect(nodoSalida); osc.start(ahora); osc.stop(ahora + 0.35);
+      break;
+    }
+    case 'caja': {
+      const bs = c.sampleRate * 0.15; const b = c.createBuffer(1, bs, c.sampleRate); const d = b.getChannelData(0);
+      for (let i = 0; i < bs; i++) d[i] = Math.random() * 2 - 1;
+      const noise = c.createBufferSource(); noise.buffer = b;
+      const ng = c.createGain(); ng.gain.setValueAtTime(0.6, ahora); ng.gain.exponentialRampToValueAtTime(0.001, ahora + 0.15);
+      const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1500;
+      noise.connect(f).connect(ng).connect(nodoSalida); noise.start(ahora);
+      const osc = c.createOscillator(); const og = c.createGain(); osc.frequency.value = 200;
+      og.gain.setValueAtTime(0.4, ahora); og.gain.exponentialRampToValueAtTime(0.001, ahora + 0.1);
+      osc.connect(og).connect(nodoSalida); osc.start(ahora); osc.stop(ahora + 0.1);
+      break;
+    }
+    case 'tom1': {
+      const osc = c.createOscillator(); const gain = c.createGain();
+      osc.frequency.setValueAtTime(320, ahora);
+      osc.frequency.exponentialRampToValueAtTime(130, ahora + 0.2);
+      gain.gain.setValueAtTime(0.8, ahora);
+      gain.gain.exponentialRampToValueAtTime(0.001, ahora + 0.3);
+      osc.connect(gain).connect(nodoSalida); osc.start(ahora); osc.stop(ahora + 0.3);
+      break;
+    }
+    case 'floortom': {
+      const osc = c.createOscillator(); const gain = c.createGain();
+      osc.frequency.setValueAtTime(140, ahora);
+      osc.frequency.exponentialRampToValueAtTime(60, ahora + 0.3);
+      gain.gain.setValueAtTime(0.9, ahora);
+      gain.gain.exponentialRampToValueAtTime(0.001, ahora + 0.45);
+      osc.connect(gain).connect(nodoSalida); osc.start(ahora); osc.stop(ahora + 0.45);
+      break;
+    }
+    case 'charles': {
+      const bs = c.sampleRate * 0.06; const b = c.createBuffer(1, bs, c.sampleRate); const d = b.getChannelData(0);
+      for (let i = 0; i < bs; i++) d[i] = Math.random() * 2 - 1;
+      const noise = c.createBufferSource(); noise.buffer = b;
+      const g = c.createGain(); g.gain.setValueAtTime(0.25, ahora); g.gain.exponentialRampToValueAtTime(0.001, ahora + 0.06);
+      const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 8000;
+      noise.connect(f).connect(g).connect(nodoSalida); noise.start(ahora);
+      break;
+    }
+    case 'crash':
+    case 'ride': {
+      const bs = c.sampleRate * 0.8; const b = c.createBuffer(1, bs, c.sampleRate); const d = b.getChannelData(0);
+      for (let i = 0; i < bs; i++) d[i] = Math.random() * 2 - 1;
+      const noise = c.createBufferSource(); noise.buffer = b;
+      const g = c.createGain(); g.gain.setValueAtTime(0.35, ahora); g.gain.exponentialRampToValueAtTime(0.001, ahora + 0.7);
+      const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = tipo === 'crash' ? 5000 : 6000;
+      noise.connect(f).connect(g).connect(nodoSalida); noise.start(ahora);
+      break;
+    }
+    case 'cowbell': {
+      const osc1 = c.createOscillator(); const osc2 = c.createOscillator(); const gain = c.createGain();
+      osc1.frequency.value = 800; osc2.frequency.value = 540;
+      gain.gain.setValueAtTime(0.4, ahora); gain.gain.exponentialRampToValueAtTime(0.001, ahora + 0.3);
+      osc1.connect(gain); osc2.connect(gain); gain.connect(nodoSalida);
+      osc1.start(ahora); osc2.start(ahora);
+      osc1.stop(ahora + 0.3); osc2.stop(ahora + 0.3);
+      break;
+    }
+  }
+}
+
+function reproducirSonido(instrumento) {
+  inicializarAudio();
+  if (reproducirSonidoReal(instrumento)) return;
+  reproducirSonidoSintetizado(instrumento);
+}
+
+// ============================================================
+// METRÓNOMO
+// ============================================================
+function tocarClic(esAcento) {
+  if (!clicActivo) return;
+  if (!audioCtx || !gananciaMetronomo) return;
+  const c = audioCtx;
+  const ahora = c.currentTime;
+  const osc = c.createOscillator();
+  const gain = c.createGain();
+  // Acento: 1500 Hz (más agudo), normal: 1000 Hz
+  osc.frequency.value = esAcento ? 1500 : 1000;
+  // Acento: más fuerte, normal: más suave
+  const vol = esAcento ? 0.9 : 0.5;
+  gain.gain.setValueAtTime(vol, ahora);
+  gain.gain.exponentialRampToValueAtTime(0.001, ahora + 0.05);
+  osc.connect(gain).connect(gananciaMetronomo);
+  osc.start(ahora);
+  osc.stop(ahora + 0.05);
+
+  // Feedback visual
+  metronomoPulsoEl.classList.add('activo');
+  if (esAcento) metronomoPulsoEl.classList.add('acento');
+  setTimeout(() => {
+    metronomoPulsoEl.classList.remove('activo');
+    metronomoPulsoEl.classList.remove('acento');
+  }, 100);
+}
+
+function iniciarMetronomo() {
+  inicializarAudio();
+  metronomoActivo = true;
+  btnMetronomo.textContent = '⏹ METRÓNOMO';
+  btnMetronomo.classList.add('activo');
+  pulsoMetronomo = 0;
+
+  const bpm = tempoBase;
+  const msPorPulso = (60 / bpm) * 1000 / factorVelocidad;
+
+  // Determinar pulsos por compás según compás actual
+  let pulsosPorCompas = 4;
+  if (compasActual === '3/4') pulsosPorCompas = 3;
+  else if (compasActual === '2/4') pulsosPorCompas = 2;
+  else if (compasActual === '5/4') pulsosPorCompas = 5;
+  else if (compasActual === '6/8') pulsosPorCompas = 6;
+  else if (compasActual === '7/8') pulsosPorCompas = 7;
+
+  // Primer clic inmediato
+  tocarClic(true);
+
+  intervaloMetronomo = setInterval(() => {
+    pulsoMetronomo = (pulsoMetronomo + 1) % pulsosPorCompas;
+    tocarClic(pulsoMetronomo === 0);
+  }, msPorPulso);
+}
+
+function detenerMetronomo() {
+  metronomoActivo = false;
+  btnMetronomo.textContent = '▶ METRÓNOMO';
+  btnMetronomo.classList.remove('activo');
+  if (intervaloMetronomo) {
+    clearInterval(intervaloMetronomo);
+    intervaloMetronomo = null;
+  }
+  metronomoPulsoEl.classList.remove('activo');
+  metronomoPulsoEl.classList.remove('acento');
+}
+
+function alternarMetronomo() {
+  if (metronomoActivo) detenerMetronomo();
+  else iniciarMetronomo();
+}
+
+// ============================================================
+// CONFIGURACIÓN
+// ============================================================
+function cargarConfig() {
+  try {
+    const guardado = localStorage.getItem('bateria-zonas');
+    if (guardado) {
+      const parsed = JSON.parse(guardado);
+      Object.keys(parsed).forEach(k => { posicionesZonas[k] = parsed[k]; });
+    }
+  } catch (e) {
+    console.warn('No se pudo cargar la configuración guardada:', e);
+  }
+}
+
+function guardarConfig() {
+  localStorage.setItem('bateria-zonas', JSON.stringify(posicionesZonas));
+  instruccionEl.textContent = '✅ Configuración guardada';
+  setTimeout(() => {
+    if (!estaReproduciendo) instruccionEl.textContent = 'Listo';
+  }, 2000);
+}
+
+// ============================================================
+// ZONAS
+// ============================================================
+function crearZonas() {
+  contenedorZonas.innerHTML = '';
+  Object.keys(posicionesZonas).forEach(nombre => crearZona(nombre));
+}
+
+function crearZona(nombre) {
+  const p = posicionesZonas[nombre];
+  if (!p) return;
+
+  const div = document.createElement('div');
+  div.className = 'zona';
+  div.dataset.instrumento = nombre;
+  div.style.left = p.x + '%';
+  div.style.top = p.y + '%';
+  div.style.width = p.w + '%';
+  div.style.height = p.h + '%';
+  div.style.transform = 'translate(-50%, -50%)';
+
+  const etiqueta = p.etiqueta || (CATALOGO[nombre] ? CATALOGO[nombre].etiqueta : nombre);
+  div.innerHTML = `
+    <span class="etiqueta">${etiqueta}</span>
+    <div class="btn-borrar" title="Eliminar">✕</div>
+    <div class="handle" title="Redimensionar"></div>
+  `;
+
+  div.addEventListener('touchstart', (e) => {
+    if (modoCalibracion) return;
+    e.preventDefault();
+    tocarManualmente(nombre);
+  }, { passive: false });
+  div.addEventListener('mousedown', (e) => {
+    if (modoCalibracion) return;
+    e.preventDefault();
+    tocarManualmente(nombre);
+  });
+
+  let dragging = false, resizing = false;
+  let startX = 0, startY = 0, startLeft = 0, startTop = 0, startW = 0, startH = 0;
+
+  function iniciarDragResize(e, esResize) {
+    if (!modoCalibracion) return;
+    e.preventDefault();
+    e.stopPropagation();
+    seleccionarZona(nombre);
+    const punto = e.touches ? e.touches[0] : e;
+    startX = punto.clientX; startY = punto.clientY;
+    startLeft = p.x; startTop = p.y; startW = p.w; startH = p.h;
+    if (esResize) resizing = true; else dragging = true;
+    document.addEventListener('mousemove', mover);
+    document.addEventListener('mouseup', soltar);
+    document.addEventListener('touchmove', mover, { passive: false });
+    document.addEventListener('touchend', soltar);
+  }
+
+  function mover(e) {
+    if (!dragging && !resizing) return;
+    e.preventDefault();
+    const punto = e.touches ? e.touches[0] : e;
+    const rect = escenario.getBoundingClientRect();
+    const dxPct = ((punto.clientX - startX) / rect.width) * 100;
+    const dyPct = ((punto.clientY - startY) / rect.height) * 100;
+    if (dragging) {
+      p.x = Math.max(0, Math.min(100, startLeft + dxPct));
+      p.y = Math.max(0, Math.min(100, startTop + dyPct));
+      div.style.left = p.x + '%'; div.style.top = p.y + '%';
+    } else if (resizing) {
+      p.w = Math.max(3, startW + dxPct * 2);
+      p.h = Math.max(3, startH + dyPct * 2);
+      div.style.width = p.w + '%'; div.style.height = p.h + '%';
+    }
+  }
+
+  function soltar() {
+    dragging = false; resizing = false;
+    document.removeEventListener('mousemove', mover);
+    document.removeEventListener('mouseup', soltar);
+    document.removeEventListener('touchmove', mover);
+    document.removeEventListener('touchend', soltar);
+  }
+
+  div.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('handle') || e.target.classList.contains('btn-borrar')) return;
+    iniciarDragResize(e, false);
+  });
+  div.addEventListener('touchstart', (e) => {
+    if (e.target.classList.contains('handle') || e.target.classList.contains('btn-borrar')) return;
+    iniciarDragResize(e, false);
+  }, { passive: false });
+
+  const handle = div.querySelector('.handle');
+  handle.addEventListener('mousedown', (e) => iniciarDragResize(e, true));
+  handle.addEventListener('touchstart', (e) => iniciarDragResize(e, true), { passive: false });
+
+  const btnBorrar = div.querySelector('.btn-borrar');
+  btnBorrar.addEventListener('mousedown', (e) => { e.stopPropagation(); eliminarZona(nombre); });
+  btnBorrar.addEventListener('touchstart', (e) => { e.stopPropagation(); e.preventDefault(); eliminarZona(nombre); }, { passive: false });
+
+  contenedorZonas.appendChild(div);
+}
+
+function seleccionarZona(nombre) {
+  document.querySelectorAll('.zona').forEach(z => z.classList.remove('seleccionada'));
+  const el = document.querySelector(`.zona[data-instrumento="${nombre}"]`);
+  if (el) el.classList.add('seleccionada');
+}
+
+function eliminarZona(nombre) {
+  if (!confirm(`¿Eliminar "${nombre}" del set?`)) return;
+  delete posicionesZonas[nombre];
+  const el = document.querySelector(`.zona[data-instrumento="${nombre}"]`);
+  if (el) el.remove();
+}
+
+function agregarZona(tipo) {
+  const cat = CATALOGO[tipo];
+  if (!cat) return;
+  let nombre = tipo;
+  let contador = 2;
+  while (posicionesZonas[nombre]) { nombre = tipo + contador; contador++; }
+  posicionesZonas[nombre] = { x: 50, y: 50, w: 14, h: 12, etiqueta: cat.etiqueta };
+  crearZona(nombre);
+  seleccionarZona(nombre);
+  instruccionEl.textContent = `Agregado: ${cat.etiqueta}`;
+}
+
+// ============================================================
+// CANVAS
+// ============================================================
+function ajustarCanvas() {
+  const rect = escenario.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+  canvas.style.width = rect.width + 'px'; canvas.style.height = rect.height + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvasBaq.width = rect.width * dpr; canvasBaq.height = rect.height * dpr;
+  canvasBaq.style.width = rect.width + 'px'; canvasBaq.style.height = rect.height + 'px';
+  ctxBaq.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function obtenerCentroInstrumento(nombre) {
+  const p = posicionesZonas[nombre];
+  if (!p) return { x: 0, y: 0 };
+  const rect = escenario.getBoundingClientRect();
+  return { x: rect.width * p.x / 100, y: rect.height * p.y / 100 };
+}
+
+function obtenerColorInstrumento(nombre) {
+  if (CATALOGO[nombre]) return CATALOGO[nombre].color;
+  if (nombre.startsWith('crash') || nombre.startsWith('ride') || nombre.startsWith('splash') || nombre.startsWith('china')) return '#ffd93d';
+  if (nombre.startsWith('tom') || nombre === 'caja' || nombre === 'floortom') return '#5dade2';
+  if (nombre === 'bombo') return '#ffffff';
+  return '#ffb347';
+}
+
+function moverBolaA(nombre, color) {
+  const centro = obtenerCentroInstrumento(nombre);
+  bola.objetivoX = centro.x; bola.objetivoY = centro.y;
+  bola.activa = true; bola.color = color || obtenerColorInstrumento(nombre);
+  if (bola.x === 0 && bola.y === 0) { bola.x = centro.x; bola.y = centro.y; }
+}
+
+function activarOnda(x, y, color) {
+  ondaExpansiva = { x, y, radio: 12, radioMax: 55, alpha: 1, color };
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function animar() {
+  if (!ctx) return;
+  const rect = escenario.getBoundingClientRect();
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  if (bola.activa) {
+    rastro.push({ x: bola.x, y: bola.y });
+    if (rastro.length > 14) rastro.shift();
+    for (let i = 0; i < rastro.length; i++) {
+      const p = rastro[i]; const factor = i / rastro.length;
+      ctx.beginPath(); ctx.arc(p.x, p.y, bola.radio * factor * 0.85, 0, Math.PI * 2);
+      ctx.fillStyle = hexToRgba(bola.color, factor * 0.5); ctx.fill();
+    }
+    const dx = bola.objetivoX - bola.x; const dy = bola.objetivoY - bola.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 1) { bola.x += dx * 0.28; bola.y += dy * 0.28; }
+    else { bola.x = bola.objetivoX; bola.y = bola.objetivoY; }
+    const grad = ctx.createRadialGradient(bola.x, bola.y, 0, bola.x, bola.y, bola.radio * 3);
+    grad.addColorStop(0, hexToRgba(bola.color, 0.95));
+    grad.addColorStop(0.4, hexToRgba(bola.color, 0.35));
+    grad.addColorStop(1, hexToRgba(bola.color, 0));
+    ctx.beginPath(); ctx.arc(bola.x, bola.y, bola.radio * 3, 0, Math.PI * 2);
+    ctx.fillStyle = grad; ctx.fill();
+    ctx.beginPath(); ctx.arc(bola.x, bola.y, bola.radio, 0, Math.PI * 2);
+    ctx.fillStyle = bola.color; ctx.fill();
+  }
+
+  if (ondaExpansiva) {
+    ctx.beginPath(); ctx.arc(ondaExpansiva.x, ondaExpansiva.y, ondaExpansiva.radio, 0, Math.PI * 2);
+    ctx.strokeStyle = hexToRgba(ondaExpansiva.color, ondaExpansiva.alpha);
+    ctx.lineWidth = 3; ctx.stroke();
+    ondaExpansiva.radio += 3.5; ondaExpansiva.alpha -= 0.05;
+    if (ondaExpansiva.alpha <= 0 || ondaExpansiva.radio >= ondaExpansiva.radioMax) ondaExpansiva = null;
+  }
+
+  ctxBaq.clearRect(0, 0, rect.width, rect.height);
+  dibujarBaqueta(ctxBaq, baquetaIzq, 'I');
+  dibujarBaqueta(ctxBaq, baquetaDer, 'D');
+
+  animationFrame = requestAnimationFrame(animar);
+}
+
+function dibujarBaqueta(c, b, letra) {
+  if (!b.visible) return;
+  b.x += (b.objetivoX - b.x) * 0.35;
+  b.y += (b.objetivoY - b.y) * 0.35;
+  b.angulo += (b.objetivoAngulo - b.angulo) * 0.35;
+  if (b.x === 0 && b.y === 0 && b.objetivoX !== 0) { b.x = b.objetivoX; b.y = b.objetivoY; }
+  const largo = 75; const grosor = 6;
+  c.save();
+  c.translate(b.x, b.y); c.rotate(b.angulo);
+  c.shadowColor = 'rgba(0,0,0,0.85)'; c.shadowBlur = 8; c.shadowOffsetY = 3;
+  const grad = c.createLinearGradient(-largo * 0.85, 0, largo * 0.15, 0);
+  grad.addColorStop(0, '#7a5a2d');
+  grad.addColorStop(0.3, '#c89858');
+  grad.addColorStop(0.7, '#e8c78a');
+  grad.addColorStop(1, '#f5deb3');
+  c.beginPath();
+  c.moveTo(-largo * 0.85, -grosor / 2);
+  c.lineTo(largo * 0.1, -grosor / 2);
+  c.quadraticCurveTo(largo * 0.2, -grosor / 2, largo * 0.2, 0);
+  c.quadraticCurveTo(largo * 0.2, grosor / 2, largo * 0.1, grosor / 2);
+  c.lineTo(-largo * 0.85, grosor / 2);
+  c.closePath(); c.fillStyle = grad; c.fill();
+  c.beginPath();
+  c.moveTo(-largo * 0.85, -grosor / 4); c.lineTo(largo * 0.1, -grosor / 4);
+  c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1.2; c.stroke();
+  c.beginPath(); c.arc(largo * 0.15, 0, grosor * 0.8, 0, Math.PI * 2);
+  c.fillStyle = '#f5deb3'; c.fill();
+  c.beginPath(); c.arc(largo * 0.12, -grosor * 0.25, grosor * 0.3, 0, Math.PI * 2);
+  c.fillStyle = 'rgba(255,255,255,0.85)'; c.fill();
+  c.beginPath(); c.arc(-largo * 0.85, 0, grosor / 2, 0, Math.PI * 2);
+  c.fillStyle = '#6a4a1d'; c.fill();
+
+  // Letra D/I al final de la baqueta (extremo del agarre)
+  c.save();
+  c.font = 'bold 22px Arial';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.shadowColor = 'rgba(0,0,0,1)';
+  c.shadowBlur = 6;
+  c.fillStyle = letra === 'D' ? '#ff5757' : '#5dade2';
+  c.fillText(letra, -largo * 0.5, 0);
+  c.restore();
+
+  c.restore();
+}
+
+function animarBaquetaHacia(inst, indiceMano) {
+  const centro = obtenerCentroInstrumento(inst);
+  const b = indiceMano === 0 ? baquetaIzq : baquetaDer;
+  const offsetX = indiceMano === 0 ? -55 : 55;
+  const offsetY = -65;
+  b.objetivoX = centro.x + offsetX; b.objetivoY = centro.y + offsetY;
+  b.objetivoAngulo = indiceMano === 0 ? -0.9 : 0.9;
+  setTimeout(() => { b.objetivoX = centro.x; b.objetivoY = centro.y - 10; b.objetivoAngulo = indiceMano === 0 ? -0.2 : 0.2; }, 60);
+  setTimeout(() => { b.objetivoX = centro.x + offsetX; b.objetivoY = centro.y + offsetY; b.objetivoAngulo = indiceMano === 0 ? -0.9 : 0.9; }, 280);
+}
+
+function elegirMano(inst, golpe) {
+  if (golpe && golpe.mano) {
+    return golpe.mano === 'D' ? 1 : 0;
+  }
+  if (inst === 'caja') return Math.random() < 0.5 ? 0 : 1;
+  if (inst === 'floortom') return 1;
+  if (inst.startsWith('tom')) return Math.random() < 0.5 ? 0 : 1;
+  return 1;
+}
+
+// ============================================================
+// REPRODUCCIÓN
+// ============================================================
+function ejecutarPulso() {
+  const patron = patrones[patronActual];
+  const datosPulso = patron.pulsos[indicePulso];
+  const indiceLuz = indicePulso % 4;
+  lucesPulso.forEach((luz, idx) => { luz.classList.toggle('activo', idx === indiceLuz); });
+  instruccionEl.textContent = datosPulso.texto;
+
+  const bpm = tempoBase;
+  const msPorPulso = (60 / bpm) * 1000 / factorVelocidad;
+
+  datosPulso.golpes.forEach(golpe => {
+    const tiempoMs = golpe.tiempo * msPorPulso;
+    const t = setTimeout(() => {
+      reproducirSonido(golpe.inst);
+      animarGolpe(golpe.inst);
+      const color = obtenerColorInstrumento(golpe.inst);
+      moverBolaA(golpe.inst, color);
+      const centro = obtenerCentroInstrumento(golpe.inst);
+      activarOnda(centro.x, centro.y, color);
+      if (golpe.inst !== 'bombo') {
+        const mano = elegirMano(golpe.inst, golpe);
+        animarBaquetaHacia(golpe.inst, mano);
+      }
+    }, tiempoMs);
+    timeoutsGolpes.push(t);
+  });
+
+  const siguientePulso = patron.pulsos[(indicePulso + 1) % patron.pulsos.length];
+  document.querySelectorAll('.zona').forEach(z => z.classList.remove('proximo'));
+  const anticipacionReal = Math.min(anticipacionMs, msPorPulso - 50);
+
+  const tAntic = setTimeout(() => {
+    siguientePulso.golpes.forEach(golpe => {
+      const el = document.querySelector(`.zona[data-instrumento="${golpe.inst}"]`);
+      if (el && golpe.tiempo === 0) el.classList.add('proximo');
+    });
+  }, msPorPulso - anticipacionReal);
+  timeoutsAnticipacion.push(tAntic);
+
+  indicePulso = (indicePulso + 1) % patron.pulsos.length;
+}
+
+function animarGolpe(nombre) {
+  const el = document.querySelector(`.zona[data-instrumento="${nombre}"]`);
+  if (!el) return;
+  el.classList.add('golpeando');
+  setTimeout(() => el.classList.remove('golpeando'), 220);
+}
+
+function iniciarRitmo() {
+  inicializarAudio();
+  estaReproduciendo = true;
+  btnPlay.textContent = '⏹ PARAR';
+  btnPlay.classList.add('parar');
+  indicePulso = 0; rastro = [];
+  limpiarTimeouts();
+
+  const rect = escenario.getBoundingClientRect();
+  if (baquetaIzq.x === 0 && baquetaIzq.y === 0) {
+    baquetaIzq.x = rect.width * 0.4; baquetaIzq.y = rect.height * 0.5;
+    baquetaIzq.objetivoX = baquetaIzq.x; baquetaIzq.objetivoY = baquetaIzq.y;
+  }
+  if (baquetaDer.x === 0 && baquetaDer.y === 0) {
+    baquetaDer.x = rect.width * 0.6; baquetaDer.y = rect.height * 0.5;
+    baquetaDer.objetivoX = baquetaDer.x; baquetaDer.objetivoY = baquetaDer.y;
+  }
+
+  const bpm = tempoBase;
+  const msPorPulso = (60 / bpm) * 1000 / factorVelocidad;
+  ejecutarPulso();
+  intervaloRitmo = setInterval(ejecutarPulso, msPorPulso);
+}
+
+function limpiarTimeouts() {
+  timeoutsGolpes.forEach(t => clearTimeout(t));
+  timeoutsAnticipacion.forEach(t => clearTimeout(t));
+  timeoutsGolpes = []; timeoutsAnticipacion = [];
+}
+
+function detenerRitmo() {
+  estaReproduciendo = false;
+  btnPlay.textContent = '▶ EMPEZAR';
+  btnPlay.classList.remove('parar');
+  if (intervaloRitmo) { clearInterval(intervaloRitmo); intervaloRitmo = null; }
+  limpiarTimeouts();
+  lucesPulso.forEach(l => l.classList.remove('activo'));
+  document.querySelectorAll('.zona').forEach(z => z.classList.remove('proximo'));
+  bola.activa = false; rastro = [];
+  instruccionEl.textContent = 'Presiona EMPEZAR cuando quieras';
+}
+
+function alternarPlay() {
+  if (modoCalibracion) {
+    instruccionEl.textContent = '⚠ Desactiva el modo calibración antes de reproducir';
+    return;
+  }
+  if (estaReproduciendo) detenerRitmo(); else iniciarRitmo();
+}
+
+function tocarManualmente(nombre) {
+  if (modoCalibracion) return;
+  if (!estaReproduciendo) inicializarAudio();
+  reproducirSonido(nombre);
+  animarGolpe(nombre);
+  const color = obtenerColorInstrumento(nombre);
+  moverBolaA(nombre, color);
+  const centro = obtenerCentroInstrumento(nombre);
+  activarOnda(centro.x, centro.y, color);
+  if (nombre !== 'bombo') { const mano = elegirMano(nombre, { mano: null }); animarBaquetaHacia(nombre, mano); }
+  if (navigator.vibrate) navigator.vibrate(25);
+}
+
+// ============================================================
+// EVENTOS
+// ============================================================
+btnPlay.addEventListener('click', alternarPlay);
+
+btnCalibrar.addEventListener('click', () => {
+  modoCalibracion = !modoCalibracion;
+  escenario.classList.toggle('calibrando', modoCalibracion);
+  btnCalibrar.classList.toggle('activo', modoCalibracion);
+  barraCalibracion.classList.toggle('visible', modoCalibracion);
+  if (modoCalibracion && estaReproduciendo) detenerRitmo();
+  instruccionEl.textContent = modoCalibracion
+    ? '🔧 Arrastra las zonas sobre cada tambor.'
+    : 'Calibración desactivada';
+});
+
+btnEtiquetas.addEventListener('click', () => {
+  escenario.classList.toggle('mostrar-etiquetas');
+  btnEtiquetas.classList.toggle('activo');
+});
+
+btnMetronomo.addEventListener('click', alternarMetronomo);
+
+btnClic.addEventListener('click', () => {
+  clicActivo = !clicActivo;
+  btnClic.classList.toggle('activo', clicActivo);
+  btnClic.classList.toggle('silencioso', !clicActivo);
+  btnClic.textContent = clicActivo ? '🔊 CLIC' : '🔇 CLIC';
+});
+
+btnGuardar.addEventListener('click', guardarConfig);
+
+btnReset.addEventListener('click', () => {
+  if (!confirm('¿Reiniciar todas las zonas a la posición por defecto?')) return;
+  posicionesZonas = JSON.parse(JSON.stringify(POSICIONES_DEFECTO));
+  localStorage.removeItem('bateria-zonas');
+  crearZonas();
+  instruccionEl.textContent = '↺ Zonas reiniciadas';
+});
+
+document.querySelectorAll('.barra-calibracion button[data-add]').forEach(btn => {
+  btn.addEventListener('click', () => agregarZona(btn.dataset.add));
+});
+
+document.querySelectorAll('.btn-patron').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-patron').forEach(b => b.classList.remove('seleccionado'));
+    btn.classList.add('seleccionado');
+    patronActual = btn.dataset.patron;
+    if (estaReproduciendo) { detenerRitmo(); setTimeout(iniciarRitmo, 100); }
+    else { instruccionEl.textContent = `Ejercicio: ${patrones[patronActual].nombre}`; }
+  });
+});
+
+document.querySelectorAll('.btn-velocidad').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-velocidad').forEach(b => b.classList.remove('seleccionado'));
+    btn.classList.add('seleccionado');
+    factorVelocidad = parseFloat(btn.dataset.vel);
+    if (estaReproduciendo) { detenerRitmo(); setTimeout(iniciarRitmo, 100); }
+    if (metronomoActivo) { detenerMetronomo(); iniciarMetronomo(); }
+  });
+});
+
+document.querySelectorAll('.btn-anticipacion').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-anticipacion').forEach(b => b.classList.remove('seleccionado'));
+    btn.classList.add('seleccionado');
+    anticipacionMs = parseInt(btn.dataset.ant);
+  });
+});
+
+document.querySelectorAll('.btn-compas').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.btn-compas').forEach(b => b.classList.remove('seleccionado'));
+    btn.classList.add('seleccionado');
+    compasActual = btn.dataset.compas;
+    instruccionEl.textContent = `Compás: ${compasActual}`;
+    if (metronomoActivo) { detenerMetronomo(); iniciarMetronomo(); }
+  });
+});
+
+window.addEventListener('resize', ajustarCanvas);
+
+// ============================================================
+// INICIALIZACIÓN
+// ============================================================
+window.addEventListener('load', () => {
+  canvas = document.getElementById('canvasAnimacion');
+  ctx = canvas.getContext('2d');
+  canvasBaq = document.getElementById('canvasBaquetas');
+  ctxBaq = canvasBaq.getContext('2d');
+
+  inicializarAudio();
+
+  const slider = document.getElementById('volumenSlider');
+  slider.addEventListener('input', (e) => {
+    if (gananciaVolumen) gananciaVolumen.gain.value = parseFloat(e.target.value);
+  });
+
+  const sliderMetro = document.getElementById('volumenMetroSlider');
+  sliderMetro.addEventListener('input', (e) => {
+    if (gananciaMetronomo) gananciaMetronomo.gain.value = parseFloat(e.target.value);
+  });
+
+  const tempoSlider = document.getElementById('tempoSlider');
+  const tempoValor = document.getElementById('tempoValor');
+  tempoSlider.addEventListener('input', (e) => {
+    tempoBase = parseInt(e.target.value);
+    tempoValor.textContent = tempoBase;
+    if (estaReproduciendo) { detenerRitmo(); setTimeout(iniciarRitmo, 100); }
+    if (metronomoActivo) { detenerMetronomo(); iniciarMetronomo(); }
+  });
+
+  cargarConfig();
+  crearZonas();
+  ajustarCanvas();
+  animar();
+
+  setTimeout(() => {
+    inicializarSonidos();
+  }, 300);
+
+  instruccionEl.textContent = 'Elige un ejercicio y presiona EMPEZAR';
+});
+</script>
+</body>
+</html>
