@@ -1,37 +1,26 @@
-const CACHE_NAME = 'bateria-v1';
+const CACHE = 'bateria-v2';
 const ARCHIVOS = [
   './Bateria.html',
   './Bateria.png',
-  './manifest.json'
+  './manifest.json',
+  './icono-192.png',
+  './icono-512.png'
 ];
 
-// Instalación: guarda en caché
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ARCHIVOS);
-    })
-  );
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ARCHIVOS)));
   self.skipWaiting();
 });
 
-// Activación: limpia cachés viejos
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
-      );
-    })
+    caches.keys().then((ks) =>
+      Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+    )
   );
   self.clients.claim();
 });
 
-// Fetch: sirve desde caché, si no está, va a la red
 self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((respuesta) => {
-      return respuesta || fetch(e.request);
-    })
-  );
+  e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
 });
