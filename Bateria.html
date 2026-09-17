@@ -2523,6 +2523,14 @@ window.addEventListener('load', () => {
 
   instruccionEl.textContent = 'Elige un ejercicio y presiona EMPEZAR';
 });
+ // Registrar Service Worker para PWA (funcionamiento offline)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/Bateria/sw.js')
+      .then(() => console.log('✅ Service Worker registrado'))
+      .catch((err) => console.warn('⚠️ Error SW:', err));
+  });
+}
 </script>
 </body>
 </html>
