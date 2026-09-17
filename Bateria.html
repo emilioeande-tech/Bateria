@@ -575,7 +575,7 @@ let miBateria = null;
 
 (function cargarSmplr() {
   const script = document.createElement('script');
-  script.src = 'https://code4fukui.github.io/smplr/smplr.js';
+  script.src = 'https://unpkg.com/smplr@1.0.0/dist/index.mjs';
   script.onload = () => {
     if (window.smplr && window.smplr.DrumMachine) {
       miBateria = window.smplr.DrumMachine;
